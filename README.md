@@ -98,4 +98,4 @@ chmod +x ~/.local/share/applications/tamagotchi.desktop
    aparecer con tu icono.
 
 ##Referencias
-![Icono del tamagotchi](imagenes/) 
+![Icono del tamagotchi](CocoFeliz.png) ![Icono del tamagotchi](comidita.png) 
