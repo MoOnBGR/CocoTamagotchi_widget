@@ -97,5 +97,4 @@ chmod +x ~/.local/share/applications/tamagotchi.desktop
 3. Busca "Tamagotchi" en el menu de aplicaciones (tecla Super/Windows). Deberia
    aparecer con tu icono.
 
-# Tamagotchi de escritorio
 
