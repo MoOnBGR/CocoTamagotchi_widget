@@ -1,12 +1,10 @@
-
+#!/usr/bin/env python3
 import json
 import os
 import time
+import random
 import tkinter as tk
 
-# ----------------------------------------------------------------------
-# ARTE ASCII / BRAILLE
-# ----------------------------------------------------------------------
 
 DEFAULT_ART = """\
 ⠀⢖⣔⣆⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠄⠀⠀⠀⠀⠀⠀⠀
@@ -84,10 +82,7 @@ SLEEP_ART = """\
 ⠙⠘⠙⠣⠤⠤⣤⡶⣄⣰⠧⠴⠖⠚⠋⠹⣇⢀⣠⡴⠋⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀ """
 
-# ----------------------------------------------------------------------
-# CONFIG
-# ----------------------------------------------------------------------
-
+#
 STATE_DIR = os.path.expanduser("~/.local/share/tamagotchi-widget")
 STATE_FILE = os.path.join(STATE_DIR, "state.json")
 
@@ -104,12 +99,12 @@ WAKE_ENERGY_GAIN = 35
 
 EAT_ANIM_MS = 2500        
 
-BG_SHELL = "#5b7fd1"      
-BG_SHELL_DARK = "#3f5aa8"
+BG_SHELL = "#e33d9b"      
+BG_SHELL_DARK = "#cc185a"
 SCREEN_BG = "#c9d9c0"     
 SCREEN_FG = "#3f5a3f"     
-BTN_BLUE = "#7a97e6"
-BTN_BLUE_DARK = "#2f4a8f"
+BTN_PINK = "#ed6496"
+BTN_PINK_DARK = "#8f2f45"
 
 
 def clamp(v, lo=0, hi=100):
@@ -149,41 +144,37 @@ def save_state(state):
         pass
 
 
-# ----------------------------------------------------------------------
-# WIDGET
-# ----------------------------------------------------------------------
-
 class TamagotchiWidget:
     def __init__(self):
         self.state = load_state()
         self._catch_up_time()
 
         self.root = tk.Tk()
-        self.root.title("caTamagotchi")
+        self.root.after(TICK_MS, self._tick)
+        self.root.title("Coco ♥")
         self.root.overrideredirect(True)   
         self.root.attributes("-topmost", True)
         self.root.configure(bg=BG_SHELL)
 
         self._revert_job = None
         self._flash_job = None
+        self.love_streak = 0
 
         self._build_ui()
         self._position_window()
         self._refresh_screen("¡Hola! :)")
+        self._schedule_random_art()
 
         self.root.bind("1", lambda e: self.love())
         self.root.bind("2", lambda e: self.feed())
         self.root.bind("3", lambda e: self.toggle_sleep())
 
         self.root.protocol("WM_DELETE_WINDOW", self.quit)
-        self.root.after(TICK_MS, self._tick)
 
-    # -- construcción de la interfaz -----------------------------------
 
     def _build_ui(self):
         WIDTH = 300
 
-        # Barra superior (para arrastrar la ventana + botón cerrar)
         top = tk.Frame(self.root, bg=BG_SHELL_DARK, height=22)
         top.pack(fill="x")
         top.bind("<ButtonPress-1>", self._start_move)
@@ -194,7 +185,7 @@ class TamagotchiWidget:
         close_btn.pack(side="right", padx=6)
         close_btn.bind("<Button-1>", lambda e: self.quit())
 
-        title = tk.Label(top, text="caTamagotchi", bg=BG_SHELL_DARK, fg="white",
+        title = tk.Label(top, text="Coco ♥", bg=BG_SHELL_DARK, fg="white",
                           font=("DejaVu Sans", 9, "bold"))
         title.pack(side="left", padx=6)
         title.bind("<ButtonPress-1>", self._start_move)
@@ -205,9 +196,9 @@ class TamagotchiWidget:
         screen_border.pack(padx=14, pady=(10, 6))
 
         self.screen = tk.Label(
-            screen_border, text=DEFAULT_ART, justify="center",
-            bg=SCREEN_BG, fg=SCREEN_FG, font=("DejaVu Sans Mono", 10),
-            width=28, height=10, padx=6, pady=6,
+        screen_border, text=DEFAULT_ART, justify="center",
+        bg=SCREEN_BG, fg=SCREEN_FG, font=("DejaVu Sans Mono", 10),
+        width=32, height=17, padx=6, pady=6,
         )
         self.screen.pack()
 
@@ -218,7 +209,7 @@ class TamagotchiWidget:
                                    font=("DejaVu Sans", 9, "italic"))
         self.msg_label.pack(pady=(0, 2))
 
-        # Barra de stats
+       
         self.stats_var = tk.StringVar(value="")
         stats_label = tk.Label(self.root, textvariable=self.stats_var,
                                 bg=BG_SHELL, fg="white",
@@ -240,7 +231,7 @@ class TamagotchiWidget:
         size = 46
         c = tk.Canvas(parent, width=size, height=size, bg=BG_SHELL,
                        highlightthickness=0, cursor="hand2")
-        c.create_oval(2, 2, size - 2, size - 2, fill=BTN_BLUE, outline=BTN_BLUE_DARK, width=2)
+        c.create_oval(2, 2, size - 2, size - 2, fill=BTN_PINK, outline=BTN_PINK_DARK, width=2)
         c.create_text(size / 2, size / 2, text=symbol, font=("DejaVu Sans", 16))
         c.bind("<Button-1>", lambda e: command())
         return c
@@ -255,7 +246,7 @@ class TamagotchiWidget:
         y = sh - h - 60
         self.root.geometry(f"{w}x{h}+{x}+{y}")
 
-    # -- mover ventana arrastrando --------------------------------------
+
 
     def _start_move(self, event):
         self._drag_x = event.x
@@ -324,6 +315,23 @@ class TamagotchiWidget:
             self.msg_var.set(message)
         self._update_stats_label()
 
+    def _schedule_random_art(self):
+        delay = random.randint(60_000, 180_000)
+        self.root.after(delay, self._maybe_show_random_art)
+
+    def _maybe_show_random_art(self):
+        if self.state.get("sleeping") or self._revert_job is not None:
+            self._schedule_random_art()
+            return
+        self._set_art(RANDOM_ART)
+        self.msg_var.set("...")
+        self._revert_job = self.root.after(10_000, self._end_random_art)
+
+    def _end_random_art(self):
+        self._revert_job = None
+        self._refresh_screen("")
+        self._schedule_random_art()
+
     
     def feed(self):
         if self.state.get("sleeping"):
@@ -338,6 +346,7 @@ class TamagotchiWidget:
         self._cancel_pending_revert()
         self._revert_job = self.root.after(EAT_ANIM_MS, lambda: self._refresh_screen(""))
 
+
     def love(self):
         if self.state.get("sleeping"):
             self.msg_var.set("Shh... está durmiendo zzz")
@@ -345,15 +354,32 @@ class TamagotchiWidget:
         self.state["happiness"] = clamp(self.state["happiness"] + LOVE_HAPPY_GAIN)
         save_state(self.state)
         self._update_stats_label()
-        self.msg_var.set("¡Le encantó el cariño! ♥")
-        self._flash_screen()
+
+        if self.state["happiness"] >= 100:
+            self.love_streak += 1
+        else:
+            self.love_streak = 0
+
+        if self.love_streak >= 4:
+            self.love_streak = 0
+            self._show_extra_love()
+        else:
+            self.msg_var.set("¡Le encantó el cariño! ♥")
+            self._flash_screen()
+            
 
     def _flash_screen(self):
-     
         self.screen.config(bg="#f2c6d9")
         if self._flash_job is not None:
             self.root.after_cancel(self._flash_job)
         self._flash_job = self.root.after(300, lambda: self.screen.config(bg=SCREEN_BG))
+
+
+    def _show_extra_love(self):
+        self._cancel_pending_revert()
+        self._set_art(EXTRA_LOVE_ART)
+        self.msg_var.set("¡Esta feliz al maximo!")
+        self._revert_job = self.root.after(4000, lambda: self._refresh_screen(""))
 
     def toggle_sleep(self):
         self._cancel_pending_revert()
